@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            background: #000000;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas(); // Initial resize to set canvas size
+
+        const bird = {
+            x: 100,
+            y: canvas.height / 2,
+            radius: 8, // Reduced from 10 to 8
+            gravity: 0.6,
+            lift: -10,
+            velocity: 0
+        };
+
+        const pipes = [];
+        const pipeWidth = 20;
+        const pipeGap = 100;
+        let frame = 0;
+        let money = 100000; // Starting money
+        const maxMoney = 500000; // Maximum money
+        const minMoney = 0; // Minimum money
+        const trajectory = [];
+        const trajectoryInterval = 10;
+        const startY = bird.y;
+        const startingMoney = 100000; // Define starting money as a constant
+        let difficulty = 1; // New variable to track difficulty
+
+        const candlestickWidth = 20;
+        const wickWidth = 2;
+
+        function drawBird() {
+            ctx.fillStyle = bird.y > startY ? 'red' : 'green';
+            ctx.beginPath();
+            ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawTrajectory() {
+            ctx.strokeStyle = bird.y > startY ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 255, 0, 0.5)';
+            ctx.beginPath();
+            trajectory.forEach((pos, index) => {
+                if (index === 0) {
+                    ctx.moveTo(pos.x, pos.y);
+                } else {
+                    ctx.lineTo(pos.x, pos.y);
+                }
+            });
+            ctx.stroke();
+        }
+
+        function drawPipes() {
+            pipes.forEach(pipe => {
+                // Draw the candlestick body
+                ctx.fillStyle = pipe.color;
+                ctx.fillRect(pipe.x, pipe.top, candlestickWidth, canvas.height - pipe.top - pipe.bottom);
+                
+                // Draw the upper wick (limited height)
+                const upperWickHeight = Math.min(pipe.top, 50); // Limit to 50 pixels or less
+                ctx.fillRect(pipe.x + (candlestickWidth - wickWidth) / 2, pipe.top - upperWickHeight, wickWidth, upperWickHeight);
+                
+                // Draw the lower wick (limited height)
+                const lowerWickHeight = Math.min(pipe.bottom, 50); // Limit to 50 pixels or less
+                ctx.fillRect(pipe.x + (candlestickWidth - wickWidth) / 2, canvas.height - pipe.bottom, wickWidth, lowerWickHeight);
+            });
+        }
+
+        function updatePipes() {
+            const pipeInterval = Math.max(90 - Math.floor(difficulty * 2), 30); // Decrease interval, min 30
+            if (frame % pipeInterval === 0) {
+                const bodyHeight = Math.random() * (canvas.height / 2) + canvas.height / 4;
+                const top = Math.random() * (canvas.height - bodyHeight);
+                const bottom = canvas.height - top - bodyHeight;
+                const color = Math.random() < 0.5 ? '#FF0000' : '#00FF00';
+                pipes.push({ x: canvas.width, top, bottom, color });
+            }
+            const pipeSpeed = 2 + difficulty * 0.1; // Increase pipe speed
+            pipes.forEach(pipe => {
+                pipe.x -= pipeSpeed;
+            });
+            pipes.splice(0, pipes.length, ...pipes.filter(pipe => pipe.x + candlestickWidth > 0));
+        }
+
+        function updateBird() {
+            bird.velocity += bird.gravity * (1 + difficulty * 0.05); // Increase gravity effect
+            bird.y += bird.velocity;
+
+            if (frame % trajectoryInterval === 0) {
+                trajectory.push({ x: bird.x, y: bird.y });
+                if (trajectory.length > 10) trajectory.shift();
+            }
+
+            trajectory.forEach(pos => pos.x -= 2);
+
+            if (bird.y + bird.radius > canvas.height || bird.y - bird.radius < 0) {
+                resetGame();
+            }
+        }
+
+        function checkCollision() {
+            pipes.forEach(pipe => {
+                if (bird.x - bird.radius < pipe.x + candlestickWidth && bird.x + bird.radius > pipe.x &&
+                    (bird.y - bird.radius < pipe.top || bird.y + bird.radius > canvas.height - pipe.bottom)) {
+                    resetGame();
+                }
+            });
+        }
+
+        function resetGame() {
+            bird.y = canvas.height / 2;
+            bird.velocity = 0;
+            pipes.length = 0;
+            money = startingMoney; // Use startingMoney constant
+            trajectory.length = 0;
+            difficulty = 1; // Reset difficulty when game resets
+        }
+
+        function calculatePercentChange() {
+            const change = money - startingMoney;
+            const percentChange = (change / startingMoney) * 100;
+            return percentChange.toFixed(2); // Round to 2 decimal places
+        }
+
+        function drawInterface() {
+            // Draw title
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 30px Arial';
+            ctx.fillText('Investing', 10, 40);
+
+            // Draw money
+            ctx.font = '24px Arial';
+            ctx.fillText(`$${money.toLocaleString()}`, 10, 80);
+
+            // Draw percentage change
+            const percentChange = calculatePercentChange();
+            const changeColor = percentChange >= 0 ? 'green' : 'red';
+            ctx.fillStyle = changeColor;
+            ctx.font = '20px Arial';
+            ctx.fillText(`${percentChange}%`, 10, 110);
+        }
+
+        function updateMoney() {
+            const heightRatio = 1 - (bird.y / canvas.height);
+            money = Math.round(minMoney + heightRatio * (maxMoney - minMoney));
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawTrajectory();
+            drawBird();
+            drawPipes();
+            drawInterface();
+            updateBird();
+            updatePipes();
+            updateMoney();
+            checkCollision();
+            frame++;
+            difficulty += 0.001; // Gradually increase difficulty
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.addEventListener('keydown', () => {
+            bird.velocity = bird.lift;
+        });
+
+        gameLoop();
+    </script>
+</body>
+</html>
