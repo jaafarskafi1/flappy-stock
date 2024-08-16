@@ -184,15 +184,21 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Replace the keyboard event listener with a mouse click event listener
-        canvas.addEventListener('click', () => {
+        // Function to make the bird jump
+        function jump() {
             bird.velocity = bird.lift;
-        });
+        }
 
-        // Remove the old keyboard event listener
-        // document.addEventListener('keydown', () => {
-        //     bird.velocity = bird.lift;
-        // });
+        // Add mouse click event listener
+        canvas.addEventListener('click', jump);
+
+        // Add keyboard event listener
+        document.addEventListener('keydown', (event) => {
+            // Check if the pressed key is Space or ArrowUp
+            if (event.code === 'Space' || event.code === 'ArrowUp') {
+                jump();
+            }
+        });
 
         gameLoop();
     </script>
