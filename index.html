@@ -184,9 +184,15 @@
             requestAnimationFrame(gameLoop);
         }
 
-        document.addEventListener('keydown', () => {
+        // Replace the keyboard event listener with a mouse click event listener
+        canvas.addEventListener('click', () => {
             bird.velocity = bird.lift;
         });
+
+        // Remove the old keyboard event listener
+        // document.addEventListener('keydown', () => {
+        //     bird.velocity = bird.lift;
+        // });
 
         gameLoop();
     </script>
